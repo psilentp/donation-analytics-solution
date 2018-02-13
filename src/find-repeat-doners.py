@@ -17,17 +17,16 @@ def parse_line(line):
     r_dict['CMTE_ID'] = fields[0]
     r_dict['NAME'] = fields[7]
     r_dict['ZIP_CODE'] = fields[10][:5]
-    r_dict['TRANSACTION_DT'] = fields[13]
+    r_dict['YEAR'] = int(fields[13][-4:])
     r_dict['TRANSACTION_AMT'] = fields[14]
     r_dict['OTHER_ID'] = fields[15]
     return r_dict
 
 def check_parse(transaction):
-    """determine if a parsed transaction line trans
+    """determine if a parsed transaction line transaction
     should be processed. Returns true if Ok"""
     ok = True
     ok = ok & (len(transaction['OTHER_ID'])==0)
-    ok = ok & (len(transaction['TRANSACTION_DT']) == 8)
     return ok
 
 with open(output_filename, 'wt') as outfile:
@@ -37,16 +36,14 @@ with open(output_filename, 'wt') as outfile:
         for line in f:
             trans = parse_line(line)
             if check_parse(trans):
-                doner_item = {'CMTE_ID':trans['CMTE_ID'],
-                              'TRANS':int(trans['TRANSACTION_AMT']),
-                               'YEAR':int(trans['TRANSACTION_DT'][-4:])}
+                doner_item = {'YEAR':trans['YEAR']}
                 recipient_item = {'TRANS':[int(trans['TRANSACTION_AMT'])],
-                                    'YEAR':int(trans['TRANSACTION_DT'][-4:])}
+                                  'YEAR':trans['YEAR']}
                 d = doners.setdefault((trans['NAME'],trans['ZIP_CODE']),doner_item)
                 if not d is doner_item:
                     #we have a repeat doner!
                     #was the last donation line from this doner from an earlier year?
-                    #if there was a donation with a more recent year 
+                    #otherwise if there was a donation with a more recent year 
                     #ignore the current line
                     if d['YEAR'] <= doner_item['YEAR']:
                         #if so then update the record for this year
@@ -62,7 +59,7 @@ with open(output_filename, 'wt') as outfile:
                         #output
                         outfile.write('%s|%s|%s|%s|%s|%s\n'%(trans['CMTE_ID'],
                                       trans['ZIP_CODE'],
-                                      trans['TRANSACTION_DT'][-4:],
+                                      trans['YEAR'],
                                       int(round(np.percentile(r['TRANS'],p,
                                                   interpolation='lower'))),
                                       np.sum(r['TRANS']), len(r['TRANS'])))
